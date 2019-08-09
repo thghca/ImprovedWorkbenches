@@ -12,6 +12,9 @@ namespace ImprovedWorkbenches
         public string Name;
         public ThingFilter ProductAdditionalFilter;
 
+        //HSK_Containers
+        public Building_Storage storeBuilding;
+
         public ExtendedBillData()
         {
         }
@@ -25,6 +28,9 @@ namespace ImprovedWorkbenches
 
             if (cloneName)
                 Name = other.Name;
+
+            //HSK_Containers
+            storeBuilding = other.storeBuilding;
         }
 
         public void ExposeData()
@@ -32,6 +38,7 @@ namespace ImprovedWorkbenches
             Scribe_Values.Look(ref CountAway, "countAway", false);
             Scribe_Values.Look(ref Name, "name", null);
             Scribe_Deep.Look(ref ProductAdditionalFilter, "productFilter");
+            Scribe_References.Look<Building_Storage>(ref storeBuilding, "storeBuilding");
         }
     }
 
