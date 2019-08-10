@@ -35,6 +35,10 @@ namespace ImprovedWorkbenches.HSK_Containers
             harmony.Patch(
                 original: AccessTools.Method(type: typeof(Dialog_BillConfig), name: nameof(Dialog_BillConfig.DoWindowContents)),
                 transpiler: new HarmonyMethod(type: patchType, name: nameof(Dialog_BillConfig_DoWindowContents_Transpiler)));
+
+            harmony.Patch(
+                original: AccessTools.Method(type: typeof(Thing), name: nameof(Thing.DeSpawn)),
+                postfix: new HarmonyMethod(type: patchType, name: nameof(DeSpawnPostfix)));
         }
 
         public static void ValidateSettingsPostfix(Bill_Production __instance, BillStoreModeDef ___storeMode)
@@ -308,5 +312,16 @@ namespace ImprovedWorkbenches.HSK_Containers
 
             return list;
         }
+
+        //		Verse.Thing.DeSpawn(DestroyMode) : void @060052F6
+        public static void DeSpawnPostfix(Thing __instance)
+        {
+            var bs = __instance as Building_Storage;
+            if (bs!=null)
+            {
+                Utils.Notify_Building_StorageRemoved(bs);
+            }
+        }
+
     }
 }
