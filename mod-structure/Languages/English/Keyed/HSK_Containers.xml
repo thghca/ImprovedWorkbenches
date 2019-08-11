@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <MessageBillValidationStoreBuildingDeleted>{1}'s "{0}" can no longer deliver to deleted storage building {2}.</MessageBillValidationStoreBuildingDeleted>
+  <MessageBillValidationStoreBuildingUnavailable>{1}'s "{0}" can no longer deliver to unavailable storage building {2}.</MessageBillValidationStoreBuildingUnavailable>
+  <MessageBillValidationStoreBuildingInsufficient>{1}'s "{0}" can no longer deliver all products to storage building {2}.</MessageBillValidationStoreBuildingInsufficient>
+</LanguageData>

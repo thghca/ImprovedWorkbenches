@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <MessageBillValidationStoreBuildingDeleted>Невозможно отнести результат выполнения задачи «{0}» к хранилищу {2}, поскольку оно было удалена.</MessageBillValidationStoreBuildingDeleted>
+  <MessageBillValidationStoreBuildingUnavailable>Невозможно отнести результат выполнения задачи «{0}» к хранилищу {2}, поскольку оно вне досягаемости.</MessageBillValidationStoreBuildingUnavailable>
+  <MessageBillValidationStoreBuildingInsufficient>Невозможно отнести все результаты выполнения задачи «{0}» к хранилищу {2}.</MessageBillValidationStoreBuildingInsufficient>
+</LanguageData>

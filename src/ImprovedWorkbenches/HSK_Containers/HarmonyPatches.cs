@@ -34,11 +34,18 @@ namespace ImprovedWorkbenches.HSK_Containers
 
             harmony.Patch(
                 original: AccessTools.Method(type: typeof(Dialog_BillConfig), name: nameof(Dialog_BillConfig.DoWindowContents)),
+                prefix: new HarmonyMethod(type: patchType, name: nameof(Dialog_BillConfig_DoWindowContents_Prefix)), 
+                postfix: new HarmonyMethod(type: patchType, name: nameof(Dialog_BillConfig_DoWindowContents_Postfix)),
                 transpiler: new HarmonyMethod(type: patchType, name: nameof(Dialog_BillConfig_DoWindowContents_Transpiler)));
 
             harmony.Patch(
                 original: AccessTools.Method(type: typeof(Thing), name: nameof(Thing.DeSpawn)),
-                postfix: new HarmonyMethod(type: patchType, name: nameof(DeSpawnPostfix)));
+                postfix: new HarmonyMethod(type: patchType, name: nameof(Thing_DeSpawnPostfix)));
+
+            harmony.Patch(
+                original: AccessTools.Method(type: typeof(ITab_Storage), name: "FillTab"),
+                prefix: new HarmonyMethod(type: patchType, name: nameof(ITab_Storage_FillTab_Prefix)),
+                postfix: new HarmonyMethod(type: patchType, name: nameof(ITab_Storage_FillTab_Postfix)));
         }
 
         public static void ValidateSettingsPostfix(Bill_Production __instance, BillStoreModeDef ___storeMode)
@@ -49,22 +56,23 @@ namespace ImprovedWorkbenches.HSK_Containers
                 return;
             }
 
-            var extendedData = __instance.GetExtendedData();
-            if (extendedData.storeBuilding != null)
+            var storeBuilding = __instance.GetStoreBuilding();
+
+            if (storeBuilding != null)
             {
-                if (extendedData.storeBuilding.Destroyed)
+                if (storeBuilding.Destroyed)
                 {
                     if (__instance != BillUtility.Clipboard)
                     {
-                        Messages.Message("MessageBillValidationStoreBuildingDeleted".Translate(__instance.LabelCap, __instance.billStack.billGiver.LabelShort.CapitalizeFirst(), extendedData.storeBuilding.Label), __instance.billStack.billGiver as Thing, MessageTypeDefOf.NegativeEvent, true);
+                        Messages.Message("MessageBillValidationStoreBuildingDeleted".Translate(__instance.LabelCap, __instance.billStack.billGiver.LabelShort.CapitalizeFirst(), storeBuilding.LabelCapNoCount), __instance.billStack.billGiver as Thing, MessageTypeDefOf.NegativeEvent, true);
                     }
                     __instance.SetStoreMode(RimWorld.BillStoreModeDefOf.DropOnFloor, null);
                 }
-                else if (__instance.Map != null && (__instance.Map != extendedData.storeBuilding.Map))
+                else if (__instance.Map != null && (__instance.Map != storeBuilding.Map))
                 {
                     if (__instance != BillUtility.Clipboard)
                     {
-                        Messages.Message("MessageBillValidationStoreBuildingUnavailable".Translate(__instance.LabelCap, __instance.billStack.billGiver.LabelShort.CapitalizeFirst(), extendedData.storeBuilding.Label), __instance.billStack.billGiver as Thing, MessageTypeDefOf.NegativeEvent, true);
+                        Messages.Message("MessageBillValidationStoreBuildingUnavailable".Translate(__instance.LabelCap, __instance.billStack.billGiver.LabelShort.CapitalizeFirst(), storeBuilding.LabelCapNoCount), __instance.billStack.billGiver as Thing, MessageTypeDefOf.NegativeEvent, true);
                     }
                     __instance.SetStoreMode(RimWorld.BillStoreModeDefOf.DropOnFloor, null);
                 }
@@ -170,7 +178,7 @@ namespace ImprovedWorkbenches.HSK_Containers
                 //---start
                 if(curJob.bill.GetStoreMode() == BillStoreModeDefOf.SpecificBuilding_Storage)
                 {
-                    StoreUtility.TryFindBestBetterStoreCellForIn(list[0], actor, actor.Map, StoragePriority.Unstored, actor.Faction, ((Bill_Production)(curJob.bill)).GetExtendedData().storeBuilding.slotGroup, out invalid, true);
+                    StoreUtility.TryFindBestBetterStoreCellForIn(list[0], actor, actor.Map, StoragePriority.Unstored, actor.Faction, ((Bill_Production)(curJob.bill)).GetStoreBuilding().slotGroup, out invalid, true);
                 }
                 else
                 //---end
@@ -202,24 +210,46 @@ namespace ImprovedWorkbenches.HSK_Containers
             return false;
         }
 
-        //RimWorld.Dialog_BillConfig.DoWindowContents(Rect)
-        //
-        //^0IL_05B4: ldsfld    int32 RimWorld.Dialog_BillConfig::StoreModeSubdialogHeight
-        //...
-        //---listing_Standard3.ButtonText(text3, null)
-        //^1IL_0660: ldloc.s   V_14
-        //^2IL_0662: ldloc.s V_15
-        //^3IL_0664: ldnull
-        //^4IL_0665: callvirt instance bool Verse.Listing_Standard::ButtonText(string, string)
-        //...
-        //---Find.WindowStack.Add(new FloatMenu(list));
-        //^5IL_085F: call class Verse.WindowStack Verse.Find::get_WindowStack()
-        //^6IL_0864: ldloc.s V_16
-        //IL_0866: newobj instance void Verse.FloatMenu::.ctor(class [mscorlib] System.Collections.Generic.List`1<class Verse.FloatMenuOption>)
-        //IL_086B: callvirt instance void Verse.WindowStack::Add(class Verse.Window)
-        //
+        #region Dialog_BillConfig_DoWindowContents
+
+        public static void Dialog_BillConfig_DoWindowContents_Prefix(Dialog_BillConfig __instance, ref bool __state)
+        {
+            var bill = Traverse.Create(__instance).Field("bill").GetValue<Bill_Production>();
+            var storeBuilding = bill.GetStoreBuilding();
+
+            __state = storeBuilding == null || bill.recipe.WorkerCounter.CanPossiblyStoreInBuilding_Storage(bill, storeBuilding);
+        }
+
+        public static void Dialog_BillConfig_DoWindowContents_Postfix(Dialog_BillConfig __instance, ref bool __state)
+        {
+            var bill = Traverse.Create(__instance).Field("bill").GetValue<Bill_Production>();
+            var storeBuilding = bill.GetStoreBuilding();
+
+            if (__state && !(storeBuilding == null || bill.recipe.WorkerCounter.CanPossiblyStoreInBuilding_Storage(bill, storeBuilding)))
+            {
+                Messages.Message("MessageBillValidationStoreBuildingInsufficient".Translate(bill.LabelCap, bill.billStack.billGiver.LabelShort.CapitalizeFirst(), storeBuilding.LabelCapNoCount), bill.billStack.billGiver as Thing, MessageTypeDefOf.RejectInput, false);
+            }
+        }
+
         public static IEnumerable<CodeInstruction> Dialog_BillConfig_DoWindowContents_Transpiler(IEnumerable<CodeInstruction> instructions)
         {
+            //RimWorld.Dialog_BillConfig.DoWindowContents(Rect)
+            //
+            //^0IL_05B4: ldsfld    int32 RimWorld.Dialog_BillConfig::StoreModeSubdialogHeight
+            //...
+            //---listing_Standard3.ButtonText(text3, null)
+            //^1IL_0660: ldloc.s   V_14
+            //^2IL_0662: ldloc.s V_15
+            //^3IL_0664: ldnull
+            //^4IL_0665: callvirt instance bool Verse.Listing_Standard::ButtonText(string, string)
+            //...
+            //---Find.WindowStack.Add(new FloatMenu(list));
+            //^5IL_085F: call class Verse.WindowStack Verse.Find::get_WindowStack()
+            //^6IL_0864: ldloc.s V_16
+            //IL_0866: newobj instance void Verse.FloatMenu::.ctor(class [mscorlib] System.Collections.Generic.List`1<class Verse.FloatMenuOption>)
+            //IL_086B: callvirt instance void Verse.WindowStack::Add(class Verse.Window)
+            //
+
             var get_WindowStackInfo = AccessTools.Property(typeof(Find), "WindowStack").GetGetMethod();
 
             int step = 0;
@@ -241,10 +271,10 @@ namespace ImprovedWorkbenches.HSK_Containers
                 {
                     step = 4;
                 }
-                if (step == 4 && i.opcode == OpCodes.Callvirt && i.operand==AccessTools.Method(typeof(Listing_Standard),"ButtonText"))
+                if (step == 4 && i.opcode == OpCodes.Callvirt && i.operand == AccessTools.Method(typeof(Listing_Standard), "ButtonText"))
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0);
-                    yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(patchType, nameof(ButtonText)));
+                    yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(patchType, nameof(ButtonStoreModeText)));
                     yield return new CodeInstruction(OpCodes.Ldnull);
                     step = 5;
                 }
@@ -256,33 +286,33 @@ namespace ImprovedWorkbenches.HSK_Containers
                 {
                     yield return i;
                     yield return new CodeInstruction(OpCodes.Ldarg_0);
-                    yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(patchType, nameof(InsertOptions)));
-                    step=7;
+                    yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(patchType, nameof(InsertStoreModeOptions)));
+                    step = 7;
                     continue;
                 }
                 yield return i;
             }
         }
 
-        public static string ButtonText(string text, string nullHere, Dialog_BillConfig dialog)
+        public static string ButtonStoreModeText(string text, string nullHere, Dialog_BillConfig dialog)
         {
             var bill = Traverse.Create(dialog).Field("bill").GetValue<Bill_Production>();
-            if(bill.GetStoreMode() == BillStoreModeDefOf.SpecificBuilding_Storage)
+            if (bill.GetStoreMode() == BillStoreModeDefOf.SpecificBuilding_Storage)
             {
-                var extendedData = bill.GetExtendedData();
-                var building_Storage = extendedData.storeBuilding;
-                text = string.Format(bill.GetStoreMode().LabelCap, (building_Storage == null) ? string.Empty : building_Storage.SlotYielderLabel());
-                if (building_Storage != null && !bill.recipe.WorkerCounter.CanPossiblyStoreInBuilding_Storage(bill, building_Storage))
+                var storeBuilding = bill.GetStoreBuilding();
+
+                text = string.Format(bill.GetStoreMode().LabelCap, (storeBuilding == null) ? string.Empty : storeBuilding.SlotYielderLabel());
+                if (storeBuilding != null && !bill.recipe.WorkerCounter.CanPossiblyStoreInBuilding_Storage(bill, storeBuilding))
                 {
                     text += string.Format(" ({0})", "IncompatibleLower".Translate());
                     Text.Font = GameFont.Tiny;
                 }
-                
-            }                    
+
+            }
             return text;
         }
 
-        public static List<FloatMenuOption> InsertOptions(List<FloatMenuOption> list, Dialog_BillConfig dialog)
+        public static List<FloatMenuOption> InsertStoreModeOptions(List<FloatMenuOption> list, Dialog_BillConfig dialog)
         {
             list.RemoveAll(x => x.Label == BillStoreModeDefOf.SpecificBuilding_Storage.LabelCap);
 
@@ -312,9 +342,9 @@ namespace ImprovedWorkbenches.HSK_Containers
 
             return list;
         }
+        #endregion
 
-        //		Verse.Thing.DeSpawn(DestroyMode) : void @060052F6
-        public static void DeSpawnPostfix(Thing __instance)
+        public static void Thing_DeSpawnPostfix(Thing __instance)
         {
             var bs = __instance as Building_Storage;
             if (bs!=null)
@@ -323,5 +353,28 @@ namespace ImprovedWorkbenches.HSK_Containers
             }
         }
 
+        #region ITab_Storage_FillTab
+
+        public static void ITab_Storage_FillTab_Prefix(ITab_Storage __instance, ref Bill[] __state)
+        {
+            IStoreSettingsParent storeSettingsParent = Traverse.Create(__instance).Property("SelStoreSettingsParent").GetValue<IStoreSettingsParent>();
+            __state = (from b in BillUtility.GlobalBills()
+                       where b is Bill_Production && (b as Bill_Production).GetStoreBuilding() == storeSettingsParent && b.recipe.WorkerCounter.CanPossiblyStoreInBuilding_Storage((Bill_Production)b, (b as Bill_Production).GetStoreBuilding())
+                       select b).ToArray<Bill>();
+        }
+
+        public static void ITab_Storage_FillTab_Postfix(ITab_Storage __instance, ref Bill[] __state)
+        {
+            IStoreSettingsParent storeSettingsParent = Traverse.Create(__instance).Property("SelStoreSettingsParent").GetValue<IStoreSettingsParent>();
+            Bill[] second = (from b in BillUtility.GlobalBills()
+                             where b is Bill_Production && (b as Bill_Production).GetStoreBuilding() == storeSettingsParent && b.recipe.WorkerCounter.CanPossiblyStoreInBuilding_Storage((Bill_Production)b, (b as Bill_Production).GetStoreBuilding())
+                             select b).ToArray<Bill>();
+            IEnumerable<Bill> enumerable = __state.Except(second);
+            foreach (Bill bill in enumerable)
+            {
+                Messages.Message("MessageBillValidationStoreBuildingInsufficient".Translate(bill.LabelCap, bill.billStack.billGiver.LabelShort.CapitalizeFirst(), ((Bill_Production)bill).GetStoreBuilding().Label), bill.billStack.billGiver as Thing, MessageTypeDefOf.RejectInput, false);
+            }
+        } 
+        #endregion
     }
 }

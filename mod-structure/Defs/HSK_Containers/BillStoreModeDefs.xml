@@ -3,7 +3,7 @@
 <Defs>
   <BillStoreModeDef>
     <defName>SpecificBuilding_Storage</defName>
-    <label>take to {0}</label>
+    <label>put in {0}</label>
     <listOrder>30</listOrder>
   </BillStoreModeDef>
 </Defs>

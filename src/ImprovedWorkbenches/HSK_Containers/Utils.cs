@@ -9,18 +9,25 @@ namespace ImprovedWorkbenches.HSK_Containers
         //      +RimWorld.Bill_Production.SetStoreMode(BillStoreModeDef, Zone_Stockpile)
         //		+RimWorld.Bill_Production.ValidateSettings() : void @060025B5
         //		+RimWorld.Dialog_BillConfig.DoWindowContents(Rect) : void @060025D2
+        //          +check after bill thing filter change
         //		+Verse.AI.Toils_Recipe.FinishRecipeAndStartStoringProduct() : Toil @06003B93
-        //		?RimWorld.ITab_Storage.FillTab() : void @0600319B - wtf?
+        //		RimWorld.ITab_Storage.FillTab() : void @0600319B
+        //          +check after building thing filter change
         //		+RimWorld.Dialog_BillConfig.DoWindowContents(Rect) : void @060025D2
         //
         //      +clean storeBuilding when other storemode selected;
         //      -Strings translation
-        //      +validation after despawn container
+        //      +validation after despawn container    
 
         public static ExtendedBillData GetExtendedData(this Bill_Production bill)
         {
            var extendedDataStorage = HugsLib.Utils.UtilityWorldObjectManager.GetUtilityWorldObject<ExtendedBillDataStorage>();
            return extendedDataStorage.GetOrCreateExtendedDataFor(bill);
+        }
+
+        public static Building_Storage GetStoreBuilding(this Bill_Production bill)
+        {
+            return bill.GetExtendedData().storeBuilding;
         }
 
         public static  void SetSpecificBuildingStoreMode(this Bill_Production bill, Building_Storage storeBuilding)
