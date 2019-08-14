@@ -1,4 +1,5 @@
 ﻿using RimWorld;
+using System.Collections.Generic;
 using Verse;
 
 namespace ImprovedWorkbenches.HSK_Containers
@@ -14,10 +15,21 @@ namespace ImprovedWorkbenches.HSK_Containers
         //		RimWorld.ITab_Storage.FillTab() : void @0600319B
         //          +check after building thing filter change
         //		+RimWorld.Dialog_BillConfig.DoWindowContents(Rect) : void @060025D2
-        //
         //      +clean storeBuilding when other storemode selected;
-        //      -Strings translation
-        //      +validation after despawn container    
+        // 
+        //      Here something includeFromZone related:
+        //      +RimWorld.Bill_Production.ValidateSettings() : void @060025B5
+        //      +RimWorld.Dialog_BillConfig.GenerateStockpileInclusion() : IEnumerable<Widgets.DropdownMenuElement<Zone_Stockpile>> @060025D4
+        //      +RimWorld.Dialog_BillConfig.DoWindowContents(Rect) : void @060025D2
+        //      +Verse.RecipeWorkerCounter.CountProducts(Bill_Production) : int @06004064
+        //      ImprovedWorkbenches:            
+        //          +RecipeWorkerCounter_CountProducts_Detour
+        //          +CountAdditionalProducts
+        //      When includeFromBuilding is not null includeFromZone should be null
+        //      When includeFromZone is not null includeFromBuilding should be null
+        //
+        //      +Strings translation (EN/RU)
+        //      +validation after despawn container
 
         public static ExtendedBillData GetExtendedData(this Bill_Production bill)
         {
@@ -97,6 +109,37 @@ namespace ImprovedWorkbenches.HSK_Containers
             foreach (Bill bill in BillUtility.GlobalBills())
             {
                 bill.ValidateSettings();
+            }
+        }
+
+        public static Building_Storage GetIncludeFromBuilding(this Bill_Production bill)
+        {
+            return bill.GetExtendedData().includeFromBuilding;
+        }
+
+        public static void SetIncludeFromBuilding(this Bill_Production bill, Building_Storage includeFromBuilding)
+        {
+            var extendedData = bill.GetExtendedData();
+            extendedData.includeFromBuilding = includeFromBuilding;
+
+            if (includeFromBuilding != null)
+            {
+                bill.includeFromZone = null;
+            }
+        }
+
+        public static IEnumerable<Thing> AllContainedThings(this Building_Storage building_Storage)
+        {
+            ThingGrid grids = building_Storage.Map.thingGrid;
+            var cells = building_Storage.AllSlotCellsList();
+            foreach (var cell in cells)
+            {
+                List<Thing> thingList = grids.ThingsListAt(cell);
+                foreach(var thing in thingList)
+                {
+                    if (thing != building_Storage && thing.def.category == ThingCategory.Item)
+                        yield return thing;
+                }
             }
         }
     }
